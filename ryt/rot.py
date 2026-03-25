@@ -31,11 +31,14 @@ mainscreen = True
 options = False
 key_uped = True
 hold = False
+win = False
 angle = 0
 dragging = False
 mover = False
 vol = 100
 sfx = 100
+progress = 0
+max1 = 0
 
 editor = False
 saving = False
@@ -53,7 +56,7 @@ paused = False
 pausUP = True
 slider = 0
 drag = -1
-emode = 1
+emode = 3
 edit_map = []
 sp_up = True
 og_my = None
@@ -259,6 +262,8 @@ def lighten_hex_color(hex_color, factor):
     return f"#{r_new:02X}{g_new:02X}{b_new:02X}"
 
 def load_speed():
+    if len(map) == 0:
+        return 0
     return (map[0][0]-player_pos.x)/((player_pos.y-(map[0][1]+(tick1*3)))/speed)
 
 def draw_rect(x,y,w,h,r,c,t):
@@ -277,7 +282,7 @@ def draw_model(i):
     global background_c
 
     if type[i-1] == 'box':
-        if emode == 3:
+        if emode == 3 and editor:
             draw_rect(map[i-1][0],map[i-1][1]+10+tick1*speed,50,50,0,darken_hex_color(colors[i-1],70),255)
             draw_rect(map[i-1][0],map[i-1][1]+5+tick1*speed,50,50,0,darken_hex_color(colors[i-1],70),255)
             draw_rect(map[i-1][0],map[i-1][1]+tick1*speed,50,50,0, colors[i-1],255)
@@ -286,7 +291,7 @@ def draw_model(i):
             draw_rect(map[i-1][0],map[i-1][1]+5+tick1*speed,50,50,(tick1*2)%360,darken_hex_color(colors[i-1],70),255)
             draw_rect(map[i-1][0],map[i-1][1]+tick1*speed,50,50,(tick1*2)%360, colors[i-1],255)
     elif type[i-1] == 'duo':
-        if emode == 3:
+        if emode == 3 and editor:
             draw_rect(map[i-1][0],map[i-1][1]+10+tick1*speed,50,50,0,darken_hex_color(colors[i-1],70),100)
             draw_rect(map[i-1][0],map[i-1][1]+5+tick1*speed,50,50,0,darken_hex_color(colors[i-1],70),100)
             draw_rect(map[i-1][0],map[i-1][1]+tick1*speed,50,50,0, colors[i-1],100)
@@ -318,6 +323,9 @@ def draw_things():
         
 def player_physics():
     global player_pos, last_pos, running, complete, can_run, key_uped, hold, angle, background_c, bg_list
+
+    if len(map) == 0:
+        return
 
     if len(speeds) == 0:
         player_pos.x += 0
@@ -354,7 +362,7 @@ def player_physics():
     #angle = speeds[0]*10
 
 def maps_check():
-    global speeds, map, colors, complete, running, can_run, key_uped, type
+    global speeds, map, colors, complete, running, can_run, key_uped, type, win
     if complete:
         if type[0] == 'box':
             del map[0]
@@ -363,6 +371,9 @@ def maps_check():
             complete = False
             speeds[0] = load_speed()
             key_uped = False
+            if len(map) == 0:
+                can_run = False
+                win = True
         elif type[0] == 'duo':
             type[0] = 'box'
             complete = False
@@ -380,11 +391,13 @@ def draw_editor():
             mued = False
             mup = False
         elif mup:
-            emode = 1
-            for i in range(30):
-                original_surface.blit(fade_surface, (0, 0))
-            print(map)
-            print()
+            editor = False
+            mainscreen = True
+            can_run = False
+            #for i in range(30):
+                #original_surface.blit(fade_surface, (0, 0))
+            #print(map)
+            #print()
     elif keys[pygame.K_l] and emode == 3 and not mued:
         pygame.mixer.music.load(level+".mp3")
         pygame.mixer.music.play()
@@ -565,9 +578,10 @@ def save_data(id, text, x):
                 
         if not done and not text == "~delete":
             lines.append(id+"\n")
-            lines.append(text+"\n")
-            lines.append(text+"\n")
-            lines.append(text+"\n")
+            lines.append(str(text)+"\n")
+            lines.append(str(text)+"\n")
+            lines.append(str(text)+"\n")
+            lines.append(str(text)+"\n")
             lines.append("\n")
         file.writelines(lines)
 
@@ -590,12 +604,13 @@ def load_data(id,x):
             return ""
 
 def start_game():
-    global speeds, can_run, map, colors, type, player_pos, tick1, speed, dtick, mainscreen, bg_list, paused, pausUP
+    global speeds, can_run, map, colors, type, player_pos, tick1, speed, dtick, mainscreen, bg_list, paused, pausUP, max1, endtick
 
     can_run = True
     mainscreen = False
     paused = False
     pausUP = True
+    endtick = 0
     dtick = 0
     tick1 = 0
     speed = 3
@@ -619,6 +634,7 @@ def start_game():
 
     speeds = [0]
     speeds[0] = load_speed()
+    max1 = map[len(map)-1][1]
 
     if not editor:
         pygame.mixer.music.load(level+".mp3")
@@ -679,6 +695,27 @@ def draw_mainscreen():
         text = font.render(str(ast.literal_eval(levels[i*6-2])[0])+"%", False, ast.literal_eval(levels[i*6-2])[2])
         text_rect = text.get_rect(topleft=(670,100+i*100+extra_y))
         original_surface.blit(text, text_rect)
+
+    pygame.draw.rect(original_surface, "#972525",(17,17,86,56))
+    pygame.draw.rect(original_surface, "#FF3F3F",(20,20,80,50))
+    font = pygame.font.SysFont('Impact', 20)
+    text = font.render("Add Lvl.", False, "#972525")
+    text_rect = text.get_rect(center=(60,45))
+    original_surface.blit(text, text_rect) 
+    if (mouse_x > 17 and mouse_x < 103 and mouse_y > 17 and mouse_y < 73):
+        draw_rect(60,45,86,56,0,"black",50)
+        if pygame.mouse.get_pressed()[0]:
+            font = pygame.font.SysFont('Impact', 20)
+            text = font.render("Enter name in input.", False, "#FFFFFF")
+            text_rect = text.get_rect(center=(100,45))
+            original_surface.blit(text, text_rect)
+            ab5 = input("Type Name: ")
+            ab1 = input("BG Color: ")
+            ab2 = input("Text Color: ")
+            ab3 = input("Text Color2: ")
+            save_data(ab5,[],1)
+            save_data(ab5,str([0, ab1, ab2, ab3]),4)
+
 
 def draw_slider(x,y,l,v,m,id,ex):
     global slider
@@ -752,7 +789,7 @@ def draw_options():
         text = font.render("Back", False, lvl_color[2])
         text_rect = text.get_rect(center=(450,445))
         original_surface.blit(text, text_rect)
-        if mouse_x > 375 and mouse_x < 525 and mouse_y > 420 and mouse_y < 470:
+        if mouse_x > 375 and mouse_x < 525 and mouse_y > 420 and mouse_y < 470 and not slider:
             draw_rect(450,445,150,50,0,"black",70)
             if pygame.mouse.get_pressed()[0]:
                 options = False
@@ -794,7 +831,9 @@ def draw_options():
         if mouse_x > 255 and mouse_x < 445 and mouse_y > 365 and mouse_y < 425:
             draw_rect(350,395,190,60,0,"black",70)
             if pygame.mouse.get_pressed()[0]:
-                pass
+                options = False
+                editor = True
+                mainscreen = False
         if mouse_x > 455 and mouse_x < 645 and mouse_y > 365 and mouse_y < 425:
             draw_rect(550,395,190,60,0,"black",70)
             if pygame.mouse.get_pressed()[0]:
@@ -817,68 +856,94 @@ while running:
         if event.type == pygame.QUIT:
             running = False
         picker.handle_event(event)
-
-    if can_run:
-
-        if not editor:
-            pygame.mixer.music.set_volume(vol/100)
-            keys = pygame.key.get_pressed()
-            if keys[pygame.K_ESCAPE] and pausUP:
-                if paused == False:
-                    paused = True
-                else:
-                    paused = False
-                    options = False
-                pausUP = False
-            if not keys[pygame.K_ESCAPE]:
-                pausUP = True
-            
-            if not paused:
-                tick1 += 1
-            #Semitransparent BG
-            if complete:
-                draw_rect(450,325,900,650,0,background_c,200)
+    
+    if can_run or win:
+        if win:
+            progress = 100
+            if not endtick > 95:
+                endtick += (100-endtick)/15
             fade_surface.fill(background_c)
             original_surface.blit(fade_surface, (0, 0))
-            #draw_rect(0,530,900,150,0,"black",105)
-
-            if not paused:
-                maps_check()
             draw_things()
-            if not paused:
-                player_physics()
-            if paused:
-                for i in range(20):
-                    pygame.draw.line(original_surface,lighten_hex_color(background_c,(19-i)*0.15),(last_pos[19-i][0],last_pos[19-i][1]+i*7),(last_pos[18-i][0],last_pos[18-i][1]+(i+1)*7),10)
-                pygame.draw.circle(original_surface,"white",player_pos,15)
-                draw_options()
-        else:
-            if ticks % 35 == 0:
-                draw_rect(450,325,900,650,0,background_c,200)
-            draw_editor()
+            pygame.draw.circle(original_surface,"white",(450,550),15)
+            font = pygame.font.SysFont('Impact', 5+int(endtick))
+            if endtick > 93:
+                font = pygame.font.SysFont('Impact', 100)
+                endtick += 1
+            if endtick > 150:
+                mainscreen = True
+                can_run = False
+                win = False
+                paused = False
+                options = False
+                editor = False
+            text = font.render("Level Complete!", True, lvl_color[3])
+            text_rect = text.get_rect(center=(450,325))
+            original_surface.blit(text, text_rect)
             
-            if emode == 3:
-                mouse_x, mouse_y = pygame.mouse.get_pos()
-                
-                if not check_click(mouse_x,mouse_y) and not mover and pygame.mouse.get_pressed()[0] and og_my == None and not mued:
-                    og_my = mouse_y
-                    dragging = True
-                if not pygame.mouse.get_pressed()[0]:
-                    og_my = None
-                    dragging = False
-                
-                if not og_my == None:
-                    tick1 += (mouse_y-og_my)/3
-                    og_my = mouse_y
-                    if tick1 < 0:
-                        tick1 = 0
 
-    
+
+        else:
+            if not editor:
+                pygame.mixer.music.set_volume(vol/100)
+                keys = pygame.key.get_pressed()
+                if keys[pygame.K_ESCAPE] and pausUP:
+                    if paused == False:
+                        paused = True
+                    else:
+                        paused = False
+                        options = False
+                    pausUP = False
+                if not keys[pygame.K_ESCAPE]:
+                    pausUP = True
+
+                if not paused:
+                    tick1 += 1
+                    progress = (tick1*3/(max1-550))*-100
+                #Semitransparent BG
+                if complete:
+                    draw_rect(450,325,900,650,0,background_c,200)
                 fade_surface.fill(background_c)
                 original_surface.blit(fade_surface, (0, 0))
                 #draw_rect(0,530,900,150,0,"black",105)
+
+                if not paused:
+                    maps_check()
                 draw_things()
-                pygame.draw.circle(original_surface,"white",(450,550),15)
+                if not paused:
+                    player_physics()
+                if paused:
+                    for i in range(20):
+                        pygame.draw.line(original_surface,lighten_hex_color(background_c,(19-i)*0.15),(last_pos[19-i][0],last_pos[19-i][1]+i*7),(last_pos[18-i][0],last_pos[18-i][1]+(i+1)*7),10)
+                    pygame.draw.circle(original_surface,"white",player_pos,15)
+                    draw_options()
+            else:
+                if ticks % 35 == 0:
+                    draw_rect(450,325,900,650,0,background_c,200)
+                draw_editor()
+
+                if emode == 3:
+                    mouse_x, mouse_y = pygame.mouse.get_pos()
+
+                    if not check_click(mouse_x,mouse_y) and not mover and pygame.mouse.get_pressed()[0] and og_my == None and not mued:
+                        og_my = mouse_y
+                        dragging = True
+                    if not pygame.mouse.get_pressed()[0]:
+                        og_my = None
+                        dragging = False
+
+                    if not og_my == None:
+                        tick1 += (mouse_y-og_my)/3
+                        og_my = mouse_y
+                        if tick1 < 0:
+                            tick1 = 0
+
+
+                    fade_surface.fill(background_c)
+                    original_surface.blit(fade_surface, (0, 0))
+                    #draw_rect(0,530,900,150,0,"black",105)
+                    draw_things()
+                    pygame.draw.circle(original_surface,"white",(450,550),15)
 
     else:
         if not editor and not mainscreen:
@@ -902,10 +967,27 @@ while running:
                 pygame.draw.circle(original_surface,"white",(450,550),15)
             if tick1 < 10 and dtick > 20:
                 start_game()
+            
         
         if mainscreen:
             draw_mainscreen()
     
+    if not editor and not mainscreen:
+        if progress > lvl_color[0]:
+            lvl_color[0] = round(progress)
+            save_data(level,str(lvl_color),4)
+
+        draw_bar(300,20,300,15,progress/100,lvl_color[2],lvl_color[3])
+        font = pygame.font.SysFont('Impact', 16)
+        font.set_bold(True)
+        text = font.render(str(round(progress))+"%", True, lvl_color[3])
+        text_rect = text.get_rect(topleft=(605,10))
+        original_surface.blit(text, text_rect)
+        font = pygame.font.SysFont('Impact', 15)
+        text = font.render(str(round(progress))+"%", False, lvl_color[2])
+        text_rect = text.get_rect(topleft=(606,11))
+        original_surface.blit(text, text_rect)
+
 
     rotated_surface = pygame.transform.rotate(original_surface, angle)
     rotated_rect = rotated_surface.get_rect(center=(WIDTH // 2, HEIGHT // 2))
