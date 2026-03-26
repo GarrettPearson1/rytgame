@@ -304,14 +304,15 @@ def draw_model(i):
 def draw_things():
     global background_c, map
 
-    background_c = "#004A68"
+    #background_c = "#004A68"
     for i in range(len(map),0,-1):
         draw_model(i)
         
-    if not emode == 3:
+    if not editor:
         return
-    
+    background_c = "#004A68"
     for i in range(len(map)):
+        
         if type[i-1] == 'bg':
             if not map[i-1][0] == 100:
                 map[i-1] = (100,map[i-1][1])
@@ -338,9 +339,10 @@ def player_physics():
     if len(last_pos) > 20:
         del last_pos[0]
     for i in range(20):
-        #pygame.draw.line(original_surface,"#414141",(last_pos[19-i][0],last_pos[19-i][1]+i*7),(last_pos[18-i][0],last_pos[18-i][1]+(i+1)*7),10)
-        pygame.draw.line(original_surface,lighten_hex_color(background_c,(19-i)*0.15),(last_pos[19-i][0],last_pos[19-i][1]+i*7),(last_pos[18-i][0],last_pos[18-i][1]+(i+1)*7),10)
-    pygame.draw.circle(original_surface,"white",player_pos,15)
+        pygame.draw.line(original_surface,lighten_hex_color(background_c,1.2),(last_pos[19-i][0],last_pos[19-i][1]+i*7),(last_pos[18-i][0],last_pos[18-i][1]+(i+1)*7),17)
+        pygame.draw.line(original_surface,darken_hex_color(background_c,(19-i)*2),(last_pos[19-i][0],last_pos[19-i][1]+i*7),(last_pos[18-i][0],last_pos[18-i][1]+(i+1)*7),10)
+    pygame.draw.circle(original_surface,lighten_hex_color(background_c,1.2),player_pos,18)
+    pygame.draw.circle(original_surface,darken_hex_color(background_c,40),player_pos,15)
 
     keys = pygame.key.get_pressed()
 
@@ -354,8 +356,10 @@ def player_physics():
 
     elif keys[pygame.K_SPACE] and not complete and key_uped:
         hold = True
+        can_run = False
     
-    if bg_list[0][1] > 550:
+
+    if len(bg_list) > 0 and bg_list[0][1]+tick1*3 > 550:
         background_c = bg_list[0][0]
         del bg_list[0]
     
@@ -394,10 +398,7 @@ def draw_editor():
             editor = False
             mainscreen = True
             can_run = False
-            #for i in range(30):
-                #original_surface.blit(fade_surface, (0, 0))
-            #print(map)
-            #print()
+
     elif keys[pygame.K_l] and emode == 3 and not mued:
         pygame.mixer.music.load(level+".mp3")
         pygame.mixer.music.play()
@@ -604,7 +605,7 @@ def load_data(id,x):
             return ""
 
 def start_game():
-    global speeds, can_run, map, colors, type, player_pos, tick1, speed, dtick, mainscreen, bg_list, paused, pausUP, max1, endtick
+    global speeds, can_run, map, colors, type, player_pos, tick1, speed, dtick, mainscreen, bg_list, paused, pausUP, max1, endtick, background_c
 
     can_run = True
     mainscreen = False
@@ -614,22 +615,23 @@ def start_game():
     dtick = 0
     tick1 = 0
     speed = 3
-    bg_list = [("#004A68",200)]
+    bg_list = []
+    background_c = "#004A68"
     map = ast.literal_eval(load_data(level,1))
     colors = ast.literal_eval(load_data(level,2))
     type = ast.literal_eval(load_data(level,3))
-    player_pos = pygame.Vector2(map[0][0], 550)
     for i in range(len(map)-len(colors)):
         colors.append(colors[len(colors)-1])
     for i in range(len(map)-len(type)):
         type.append(type[len(type)-1])
     for i in range(len(map)):
-        if map[i-1] == 'bg':
+        if type[i-1] == 'bg' and not editor:
             bg_list.append((colors[i-1],map[i-1][1]))
             del map[i-1]
             del type[i-1]
             del colors[i-1]
             i -= 1
+    player_pos = pygame.Vector2(map[0][0], 550)
     draw_rect(450,325,900,650,0,background_c,255)
 
     speeds = [0]
@@ -663,7 +665,7 @@ def draw_mainscreen():
                 lvl_color = ast.literal_eval(levels[i*6-2])
                 start_game()
             keys = pygame.key.get_pressed()
-            if keys[pygame.K_e] and keys[pygame.K_r]:
+            if keys[pygame.K_e] and keys[pygame.K_r] and False:
                 level = levels[i*6-6]
                 pygame.mixer.music.stop()
                 map = ast.literal_eval(load_data(level,1))
@@ -813,6 +815,7 @@ def draw_options():
             if pygame.mouse.get_pressed()[0]:
                 paused = False
                 pausUP = False
+                pygame.mixer.music.unpause()
         if mouse_x > 455 and mouse_x < 645 and mouse_y > 295 and mouse_y < 355:
             draw_rect(550,325,190,60,0,"black",70)
             if pygame.mouse.get_pressed()[0]:
@@ -833,6 +836,7 @@ def draw_options():
             if pygame.mouse.get_pressed()[0]:
                 options = False
                 editor = True
+                start_game()
                 mainscreen = False
         if mouse_x > 455 and mouse_x < 645 and mouse_y > 365 and mouse_y < 425:
             draw_rect(550,395,190,60,0,"black",70)
@@ -865,7 +869,8 @@ while running:
             fade_surface.fill(background_c)
             original_surface.blit(fade_surface, (0, 0))
             draw_things()
-            pygame.draw.circle(original_surface,"white",(450,550),15)
+            pygame.draw.circle(original_surface,lighten_hex_color(background_c,1.2),player_pos,18)
+            pygame.draw.circle(original_surface,darken_hex_color(background_c,40),player_pos,15)
             font = pygame.font.SysFont('Impact', 5+int(endtick))
             if endtick > 93:
                 font = pygame.font.SysFont('Impact', 100)
@@ -890,9 +895,11 @@ while running:
                 if keys[pygame.K_ESCAPE] and pausUP:
                     if paused == False:
                         paused = True
+                        pygame.mixer.music.pause()
                     else:
                         paused = False
                         options = False
+                        pygame.mixer.music.unpause()
                     pausUP = False
                 if not keys[pygame.K_ESCAPE]:
                     pausUP = True
@@ -914,8 +921,10 @@ while running:
                     player_physics()
                 if paused:
                     for i in range(20):
-                        pygame.draw.line(original_surface,lighten_hex_color(background_c,(19-i)*0.15),(last_pos[19-i][0],last_pos[19-i][1]+i*7),(last_pos[18-i][0],last_pos[18-i][1]+(i+1)*7),10)
-                    pygame.draw.circle(original_surface,"white",player_pos,15)
+                        pygame.draw.line(original_surface,lighten_hex_color(background_c,1.2),(last_pos[19-i][0],last_pos[19-i][1]+i*7),(last_pos[18-i][0],last_pos[18-i][1]+(i+1)*7),17)
+                        pygame.draw.line(original_surface,darken_hex_color(background_c,(19-i)*2),(last_pos[19-i][0],last_pos[19-i][1]+i*7),(last_pos[18-i][0],last_pos[18-i][1]+(i+1)*7),10)
+                    pygame.draw.circle(original_surface,lighten_hex_color(background_c,1.2),player_pos,18)
+                    pygame.draw.circle(original_surface,darken_hex_color(background_c,40),player_pos,15)
                     draw_options()
             else:
                 if ticks % 35 == 0:
@@ -943,7 +952,8 @@ while running:
                     original_surface.blit(fade_surface, (0, 0))
                     #draw_rect(0,530,900,150,0,"black",105)
                     draw_things()
-                    pygame.draw.circle(original_surface,"white",(450,550),15)
+                    pygame.draw.circle(original_surface,lighten_hex_color(background_c,1.2),(450,550),18)
+                    pygame.draw.circle(original_surface,darken_hex_color(background_c,40),(450,550),15)
 
     else:
         if not editor and not mainscreen:
@@ -964,7 +974,8 @@ while running:
                 original_surface.blit(fade_surface, (0, 0))
                 #draw_rect(0,530,900,150,0,"black",105)
                 draw_things()
-                pygame.draw.circle(original_surface,"white",(450,550),15)
+                pygame.draw.circle(original_surface,lighten_hex_color(background_c,1.2),(450,550),18)
+                pygame.draw.circle(original_surface,darken_hex_color(background_c,40),(450,550),15)
             if tick1 < 10 and dtick > 20:
                 start_game()
             
