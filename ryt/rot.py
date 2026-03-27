@@ -349,11 +349,16 @@ def player_physics():
     if not keys[pygame.K_SPACE]:
         key_uped = True
         hold = False
-    
+    angle = angle/1.5
     if keys[pygame.K_SPACE] and map[0][1]+tick1*speed > 500 and not complete and abs(map[0][0]-player_pos.x) < 30 and not hold:
+        if map[0][0]>map[1][0]:
+            angle = 5
+        else:
+            angle = -5
         complete = True
         hold = True
-
+        
+    
     elif keys[pygame.K_SPACE] and not complete and key_uped:
         hold = True
         can_run = False
@@ -363,7 +368,7 @@ def player_physics():
         background_c = bg_list[0][0]
         del bg_list[0]
     
-    #angle = speeds[0]*10
+    
 
 def maps_check():
     global speeds, map, colors, complete, running, can_run, key_uped, type, win
